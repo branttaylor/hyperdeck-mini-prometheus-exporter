@@ -4,83 +4,28 @@ const yaml = require('yamljs');
 
 const { exec } = require('child_process');
 
-const slot_1_recording_time = new prom.Gauge({
-  name: 'slot_1_recording_time',
+const hyperdeck_slot_1_recording_time = new prom.Gauge({
+  name: 'hyperdeck_slot_1_recording_time',
   help: 'Recording time available in seconds',
   labelNames: [
     'deviceName'
   ]
 });
 
-const slot_2_recording_time = new prom.Gauge({
-  name: 'slot_2_recording_time',
+const hyperdeck_slot_2_recording_time = new prom.Gauge({
+  name: 'hyperdeck_slot_2_recording_time',
   help: 'Recording time available in seconds',
   labelNames: [
     'deviceName'
   ]
 });
 
-const status_record = new prom.Gauge({
-  name: 'status_record',
+const hyperdeck_status = new prom.Gauge({
+  name: 'hyperdeck_status',
   help: 'Current status',
   labelNames: [
-    'deviceName'
-  ]
-});
-
-const status_shuttle = new prom.Gauge({
-  name: 'status_shuttle',
-  help: 'Current status',
-  labelNames: [
-    'deviceName'
-  ]
-});
-
-const status_preview = new prom.Gauge({
-  name: 'status_preview',
-  help: 'Current status',
-  labelNames: [
-    'deviceName'
-  ]
-});
-
-const status_stopped = new prom.Gauge({
-  name: 'status_stopped',
-  help: 'Current status',
-  labelNames: [
-    'deviceName'
-  ]
-});
-
-const status_play = new prom.Gauge({
-  name: 'status_play',
-  help: 'Current status',
-  labelNames: [
-    'deviceName'
-  ]
-});
-
-const status_forward = new prom.Gauge({
-  name: 'status_forward',
-  help: 'Current status',
-  labelNames: [
-    'deviceName'
-  ]
-});
-
-const status_rewind = new prom.Gauge({
-  name: 'status_rewind',
-  help: 'Current status',
-  labelNames: [
-    'deviceName'
-  ]
-});
-
-const status_jog = new prom.Gauge({
-  name: 'status_jog',
-  help: 'Current status',
-  labelNames: [
-    'deviceName'
+    'deviceName',
+    'current_status'
   ]
 });
 
@@ -147,45 +92,18 @@ async function getMetrics() {
   const jsonObjectS2 = yaml.parse(yamlObjectS2);
   const jsonObjectT = yaml.parse(yamlObjectT);
 
-  slot_1_recording_time.set({
+  hyperdeck_slot_1_recording_time.set({
     deviceName: 'HyperDeck Studio HD Mini'
   }, Number(jsonObjectS1['recording time']));
 
-  slot_2_recording_time.set({
+  hyperdeck_slot_2_recording_time.set({
     deviceName: 'HyperDeck Studio HD Mini'
   }, Number(jsonObjectS2['recording time']));
 
-  status_record.set({
-    deviceName: 'HyperDeck Studio HD Mini'
-  }, jsonObjectT['status'] === 'record' ? 1 : 0);
-
-  status_shuttle.set({
-    deviceName: 'HyperDeck Studio HD Mini'
-  }, jsonObjectT['status'] === 'shuttle' ? 1 : 0);
-
-  status_preview.set({
-    deviceName: 'HyperDeck Studio HD Mini'
-  }, jsonObjectT['status'] === 'preview' ? 1 : 0);
-
-  status_stopped.set({
-    deviceName: 'HyperDeck Studio HD Mini'
-  }, jsonObjectT['status'] === 'stopped' ? 1 : 0);
-
-  status_play.set({
-    deviceName: 'HyperDeck Studio HD Mini'
-  }, jsonObjectT['status'] === 'play' ? 1 : 0);
-
-  status_forward.set({
-    deviceName: 'HyperDeck Studio HD Mini'
-  }, jsonObjectT['status'] === 'forward' ? 1 : 0);
-
-  status_rewind.set({
-    deviceName: 'HyperDeck Studio HD Mini'
-  }, jsonObjectT['status'] === 'rewind' ? 1 : 0);
-
-  status_jog.set({
-    deviceName: 'HyperDeck Studio HD Mini'
-  }, jsonObjectT['status'] === 'jog' ? 1 : 0);
+  hyperdeck_status.set({
+    deviceName: 'HyperDeck Studio HD Mini',
+    current_status: jsonObjectT['status']
+  }, 1);
 
   return prom.register.metrics();
 };
