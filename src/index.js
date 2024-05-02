@@ -84,6 +84,8 @@ function getRemoteTextDataT(ipAddress, port, commandT) {
 }
 
 async function getMetrics() {
+  prom.register.resetMetrics();
+
   const yamlObjectS1 = await getRemoteTextDataS1(ipAddress, port, commandS1);
   const yamlObjectS2 = await getRemoteTextDataS2(ipAddress, port, commandS2);
   const yamlObjectT = await getRemoteTextDataT(ipAddress, port, commandT);
