@@ -1,0 +1,13 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: hyperdeck-mini-prometheus-exporter-service
+  namespace: monitoring
+  labels:
+    app: hyperdeck-mini-prometheus-exporter
+spec:
+  selector:
+    app: hyperdeck-mini-prometheus-exporter
+  ports:
+    - name: prometheus-client
+      port: 8000
