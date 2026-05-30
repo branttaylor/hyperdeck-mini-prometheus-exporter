@@ -1,15 +1,15 @@
-FROM node:alpine3.19
+FROM node:alpine3.22
 
 RUN apk update && apk add --no-cache \
-    git && \
-    rm -rf /tmp/* /var/cache/apk/* \
-    && mkdir /app
+    netcat-openbsd \
+    && rm -rf /tmp/* /var/cache/apk/*
 
 WORKDIR /app
 
-RUN git clone https://github.com/branttaylor/hyperdeck-mini-prometheus-exporter.git /app && \
-    npm install
-
-CMD npm start
+COPY package*.json ./
+RUN npm install
+COPY src/ ./src/
 
 EXPOSE 8000
+
+CMD ["npm", "start"]
