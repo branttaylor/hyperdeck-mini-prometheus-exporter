@@ -40,6 +40,42 @@ const hyperdeck_slot_2_status = new prom.Gauge({
   labelNames: ['device_name', 'id', 'protocol_version', 'software_version', 'slot_status', 'volume_name', 'video_format']
 });
 
+const hyperdeck_slot_1_remaining_bytes = new prom.Gauge({
+  name: 'hyperdeck_slot_1_remaining_bytes',
+  help: 'Remaining storage on slot 1 in bytes',
+  labelNames: ['device_name', 'id', 'protocol_version', 'software_version']
+});
+
+const hyperdeck_slot_1_total_bytes = new prom.Gauge({
+  name: 'hyperdeck_slot_1_total_bytes',
+  help: 'Total storage on slot 1 in bytes',
+  labelNames: ['device_name', 'id', 'protocol_version', 'software_version']
+});
+
+const hyperdeck_slot_2_remaining_bytes = new prom.Gauge({
+  name: 'hyperdeck_slot_2_remaining_bytes',
+  help: 'Remaining storage on slot 2 in bytes',
+  labelNames: ['device_name', 'id', 'protocol_version', 'software_version']
+});
+
+const hyperdeck_slot_2_total_bytes = new prom.Gauge({
+  name: 'hyperdeck_slot_2_total_bytes',
+  help: 'Total storage on slot 2 in bytes',
+  labelNames: ['device_name', 'id', 'protocol_version', 'software_version']
+});
+
+const hyperdeck_slot_1_blocked = new prom.Gauge({
+  name: 'hyperdeck_slot_1_blocked',
+  help: 'Slot 1 blocked status (1=blocked)',
+  labelNames: ['device_name', 'id', 'protocol_version', 'software_version']
+});
+
+const hyperdeck_slot_2_blocked = new prom.Gauge({
+  name: 'hyperdeck_slot_2_blocked',
+  help: 'Slot 2 blocked status (1=blocked)',
+  labelNames: ['device_name', 'id', 'protocol_version', 'software_version']
+});
+
 const hyperdeck_clip_count = new prom.Gauge({
   name: 'hyperdeck_clip_count',
   help: 'Number of clips on timeline',
@@ -52,16 +88,22 @@ const hyperdeck_uptime_seconds = new prom.Gauge({
   labelNames: ['device_name', 'id', 'protocol_version', 'software_version']
 });
 
-const hyperdeck_cache_used_gb = new prom.Gauge({
-  name: 'hyperdeck_cache_used_gb',
-  help: 'Cache used in GB',
+const hyperdeck_cache_recording_time = new prom.Gauge({
+  name: 'hyperdeck_cache_recording_time',
+  help: 'Cache recording time available in seconds',
+  labelNames: ['device_name', 'id', 'protocol_version', 'software_version', 'cache_status']
+});
+
+const hyperdeck_reference_locked = new prom.Gauge({
+  name: 'hyperdeck_reference_locked',
+  help: 'Reference signal locked (1=locked)',
   labelNames: ['device_name', 'id', 'protocol_version', 'software_version']
 });
 
-const hyperdeck_cache_total_gb = new prom.Gauge({
-  name: 'hyperdeck_cache_total_gb',
-  help: 'Cache total in GB',
-  labelNames: ['device_name', 'id', 'protocol_version', 'software_version']
+const hyperdeck_input_video_format = new prom.Gauge({
+  name: 'hyperdeck_input_video_format',
+  help: 'Input video format present (1=active)',
+  labelNames: ['device_name', 'id', 'protocol_version', 'software_version', 'format']
 });
 
 const hyperdeck_scrape_duration_seconds = new prom.Gauge({
@@ -116,11 +158,9 @@ function getRemoteTextData(command) {
 }
 
 function parseUptime(raw) {
-  // Response format: "uptime: HH:MM:SS"
-  const match = raw.match(/(\d+):(\d+):(\d+)/);
+  const match = raw.match(/(\d+) \(/);
   if (!match) return null;
-  const [, h, m, s] = match;
-  return (parseInt(h) * 3600) + (parseInt(m) * 60) + parseInt(s);
+  return parseInt(match[1]);
 }
 
 async function getMetrics() {
@@ -169,26 +209,32 @@ async function getMetrics() {
     const slot2Format = jsonObjectS2['video format'] || '';
     const slot1RecordingTime = Number(jsonObjectS1['recording time']);
     const slot2RecordingTime = Number(jsonObjectS2['recording time']);
+    const slot1RemainingBytes = Number(jsonObjectS1['remaining size']);
+    const slot2RemainingBytes = Number(jsonObjectS2['remaining size']);
+    const slot1TotalBytes = Number(jsonObjectS1['total size']);
+    const slot2TotalBytes = Number(jsonObjectS2['total size']);
+    const slot1Blocked = jsonObjectS1['blocked'] === 'true' ? 1 : 0;
+    const slot2Blocked = jsonObjectS2['blocked'] === 'true' ? 1 : 0;
     const transportStatus = jsonObjectT['status'];
     const activeSlot = Number(jsonObjectT['slot id']);
+    const referenceLocked = jsonObjectT['reference locked'] === 'true' ? 1 : 0;
+    const inputVideoFormat = jsonObjectT['input video format'] || '';
     const clipCount = Number(jsonObjectC['clip count']);
     const uptimeSeconds = parseUptime(rawU);
-    const cacheUsed = parseFloat(jsonObjectCA['cache used'] || 0);
-    const cacheTotal = parseFloat(jsonObjectCA['cache total'] || 0);
+    const cacheStatus = jsonObjectCA['status'] || 'none';
+    const cacheRecordingTime = Number(jsonObjectCA['recording time'] || 0);
 
     log('info', 'Metrics collected', {
-      slot1RecordingTime,
-      slot2RecordingTime,
-      slot1Status,
-      slot2Status,
-      slot1Volume,
-      slot2Volume,
-      transportStatus,
-      activeSlot,
-      clipCount,
-      uptimeSeconds,
-      cacheUsed,
-      cacheTotal
+      slot1Status, slot2Status,
+      slot1Volume, slot2Volume,
+      slot1RecordingTime, slot2RecordingTime,
+      slot1RemainingBytes, slot2RemainingBytes,
+      slot1TotalBytes, slot2TotalBytes,
+      slot1Blocked, slot2Blocked,
+      transportStatus, activeSlot,
+      referenceLocked, inputVideoFormat,
+      clipCount, uptimeSeconds,
+      cacheStatus, cacheRecordingTime
     });
 
     hyperdeck_slot_1_recording_time.set(labels, slot1RecordingTime);
@@ -197,10 +243,17 @@ async function getMetrics() {
     hyperdeck_active_slot.set(labels, activeSlot);
     hyperdeck_slot_1_status.set({ ...labels, slot_status: slot1Status, volume_name: slot1Volume, video_format: slot1Format }, slot1Status === 'mounted' ? 1 : 0);
     hyperdeck_slot_2_status.set({ ...labels, slot_status: slot2Status, volume_name: slot2Volume, video_format: slot2Format }, slot2Status === 'mounted' ? 1 : 0);
+    hyperdeck_slot_1_remaining_bytes.set(labels, slot1RemainingBytes);
+    hyperdeck_slot_1_total_bytes.set(labels, slot1TotalBytes);
+    hyperdeck_slot_2_remaining_bytes.set(labels, slot2RemainingBytes);
+    hyperdeck_slot_2_total_bytes.set(labels, slot2TotalBytes);
+    hyperdeck_slot_1_blocked.set(labels, slot1Blocked);
+    hyperdeck_slot_2_blocked.set(labels, slot2Blocked);
     hyperdeck_clip_count.set(labels, clipCount);
+    hyperdeck_reference_locked.set(labels, referenceLocked);
+    hyperdeck_input_video_format.set({ ...labels, format: inputVideoFormat }, 1);
+    hyperdeck_cache_recording_time.set({ ...labels, cache_status: cacheStatus }, cacheRecordingTime);
     if (uptimeSeconds !== null) hyperdeck_uptime_seconds.set(labels, uptimeSeconds);
-    hyperdeck_cache_used_gb.set(labels, cacheUsed);
-    hyperdeck_cache_total_gb.set(labels, cacheTotal);
 
     const scrapeDuration = (Date.now() - scrapeStart) / 1000;
     hyperdeck_scrape_duration_seconds.set({ device_name: deviceModel }, scrapeDuration);
